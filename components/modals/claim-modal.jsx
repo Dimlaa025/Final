@@ -77,29 +77,41 @@ export default function ClaimModal({ isOpen, onClose, currentUser, onSuccess, is
   }, [isOpen, currentUser, isEdit, existingClaim]);
 
   // 2. Dynamic update: Fetch dependents and balance whenever formData.memberId changes
-  useEffect(() => {
-    if (formData.memberId) {
-      const member = getMemberById(formData.memberId);
-      setSelectedMember(member);
+  // 2. Dynamic update: Fetch dependents and balance whenever formData.memberId changes
+useEffect(() => {
+  if (formData.memberId) {
+    const allMembers = getMembers() || [];
+    // Find the member object based on the current ID in the form
+    const member = allMembers.find(m => String(m.id) === String(formData.memberId));
+    setSelectedMember(member);
 
-      if (member) {
-        const memberDependents = getDependentsByMember(formData.memberId);
-        setDependents(memberDependents || []);
+    if (member) {
+      // FIX: Manually fetch and filter dependents based on the selected Member's ID
+      const allDeps = getDependents() || [];
+      const memberDependents = allDeps.filter(d => 
+        String(d.memberId).trim() === String(formData.memberId).trim()
+      );
+      
+      console.log("Member Selected:", member.name);
+      console.log("Dependents found for this member:", memberDependents);
+      
+      setDependents(memberDependents);
 
-        const claims = getClaims();
-        const memberClaims = claims.filter(c => 
-          c.memberId === formData.memberId && 
-          c.status === "approved" && 
-          (!isEdit || c.id !== existingClaim?.id)
-        );
-        const totalClaimed = memberClaims.reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
-        const MCB_LIMIT = 150000;
-        setMcbBalance(MCB_LIMIT - totalClaimed);
-      }
-    } else {
-      setDependents([]);
+      // Recalculate Balance
+      const claims = getClaims() || [];
+      const memberClaims = claims.filter(c => 
+        String(c.memberId) === String(formData.memberId) && 
+        c.status === "approved" && 
+        (!isEdit || c.id !== existingClaim?.id)
+      );
+      const totalClaimed = memberClaims.reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
+      setMcbBalance(150000 - totalClaimed);
     }
-  }, [formData.memberId, isEdit, existingClaim]);
+  } else {
+    setDependents([]);
+    setMcbBalance(150000);
+  }
+}, [formData.memberId, isEdit, existingClaim]);
 
   // Member search filtering
   useEffect(() => {
@@ -116,16 +128,24 @@ export default function ClaimModal({ isOpen, onClose, currentUser, onSuccess, is
     setError("");
   };
 
-  const handleMemberSelectFromDropdown = (member) => {
-    // Reset dependent when member changes
-    setFormData(prev => ({ ...prev, memberId: member.id, dependentId: "" })); 
-    setMemberSearchTerm(`${member.name} - ${member.department}`);
-    setShowMemberSearch(false);
-    
-    // Explicitly update dependents list when selecting from dropdown
-    const memberDependents = getDependentsByMember(member.id);
-    setDependents(memberDependents || []);
-  };
+const handleMemberSelectFromDropdown = (member) => {
+  // 1. Update form data (this triggers the useEffect above)
+  setFormData(prev => ({ 
+    ...prev, 
+    memberId: member.id, 
+    dependentId: "" // Reset dependent selection
+  })); 
+  
+  setMemberSearchTerm(`${member.name} - ${member.department}`);
+  setShowMemberSearch(false);
+  
+  // 2. Immediate fetch for faster UI response
+  const allDeps = getDependents() || [];
+  const memberDependents = allDeps.filter(d => 
+    String(d.memberId).trim() === String(member.id).trim()
+  );
+  setDependents(memberDependents);
+};
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -181,6 +201,8 @@ export default function ClaimModal({ isOpen, onClose, currentUser, onSuccess, is
       setLoading(false);
     }
   };
+
+  
 
   const isFormValid = 
     formData.memberId && 
@@ -246,14 +268,21 @@ export default function ClaimModal({ isOpen, onClose, currentUser, onSuccess, is
               <div className="flex gap-4">
                 <button 
                   type="button" 
-                  onClick={() => setClaimFor("self")} 
+                 onClick={() => {
+  setClaimFor("self");
+  setFormData(prev => ({ ...prev, dependentId: "" }));
+}}
+
                   className={`flex-1 py-2 rounded-lg border-2 font-medium transition ${claimFor === "self" ? "border-green-500 bg-green-50 text-green-700" : "border-gray-300 text-gray-600"}`}
                 >
                   Self
                 </button>
                 <button 
                   type="button" 
-                  onClick={() => setClaimFor("dependent")} 
+                  onClick={() => {
+  setClaimFor("dependent");
+  setFormData(prev => ({ ...prev, dependentId: "" }));
+}}
                   className={`flex-1 py-2 rounded-lg border-2 font-medium transition ${claimFor === "dependent" ? "border-green-500 bg-green-50 text-green-700" : "border-gray-300 text-gray-600"}`}
                 >
                   Dependent
@@ -371,3 +400,4 @@ export default function ClaimModal({ isOpen, onClose, currentUser, onSuccess, is
     </div>
   )
 }
+
