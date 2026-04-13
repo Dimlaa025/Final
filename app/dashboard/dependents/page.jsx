@@ -25,7 +25,8 @@ function DependentsContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [members, setMembers] = useState([])
   const [systemUsers, setSystemUsers] = useState([])
-  const [dependents, setDependents] = useState([])
+  const [dependents, setDependents] = useState([]) // This is the FILTERED list for the table
+  const [totalOwnedCount, setTotalOwnedCount] = useState(0) // This is the ACTUAL count for the limit
   const [showForm, setShowForm] = useState(false)
   const [editingDependent, setEditingDependent] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -33,8 +34,8 @@ function DependentsContent() {
   useEffect(() => {
     const currentUser = getCurrentUser()
     setUser(currentUser)
-    loadData(currentUser, searchTerm) // Pass searchTerm to loadData
-  }, [searchTerm]) // Re-run whenever searchTerm changes
+    loadData(currentUser, searchTerm)
+  }, [searchTerm])
 
   const loadData = (currentUser = user, currentSearch = searchTerm) => {
     if (!currentUser) return
@@ -51,31 +52,33 @@ function DependentsContent() {
                          roleString.includes("director") || 
                          roleString.includes("assistant");
     
-    // 1. First, apply Role-Based Filtering
-    let filteredList = []
-    if (!isPrivileged) {
-      filteredList = allDeps.filter((d) => d.memberId === currentUser.id)
-    } else {
-      filteredList = allDeps
-    }
+    // 1. Get the list of dependents owned by this user (unfiltered by search)
+    const ownedList = isPrivileged 
+      ? allDeps 
+      : allDeps.filter((d) => d.memberId === currentUser.id);
+    
+    // 2. Set the TOTAL count for the limit logic (This doesn't change when searching)
+    setTotalOwnedCount(ownedList.length);
 
-    // 2. Second, apply Search-Based Filtering
+    // 3. Apply Search Filter to the owned list for display purposes
+    let displayList = ownedList;
     if (currentSearch.trim() !== "") {
       const term = currentSearch.toLowerCase()
-      filteredList = filteredList.filter((dep) => 
+      displayList = ownedList.filter((dep) => 
         dep.name.toLowerCase().includes(term) || 
         dep.relationship.toLowerCase().includes(term) ||
-        getOwnerName(dep.memberId).toLowerCase().includes(term) // Also search by owner name
+        getOwnerName(dep.memberId, allMembers, allUsers).toLowerCase().includes(term)
       )
     }
 
-    setDependents(filteredList)
+    setDependents(displayList)
   }
 
-  const getOwnerName = (memberId) => {
-    const member = members.find(m => m.id === memberId)
+  // Helper function for owner names
+  const getOwnerName = (memberId, memberList = members, userList = systemUsers) => {
+    const member = memberList.find(m => m.id === memberId)
     if (member) return member.name
-    const sysUser = systemUsers.find(u => u.id === memberId)
+    const sysUser = userList.find(u => u.id === memberId)
     if (sysUser) return sysUser.name
     return memberId || "Unknown Member"
   }
@@ -85,7 +88,8 @@ function DependentsContent() {
                        userRole.includes("director") || 
                        userRole.includes("assistant");
 
-  const limitReached = !isPrivileged && dependents.length >= 4 
+  // CRITICAL FIX: Limit is now based on totalOwnedCount, not dependents.length
+  const limitReached = !isPrivileged && totalOwnedCount >= 4;
 
   const handleFormSubmit = (dependentData) => {
     const finalData = {
@@ -128,10 +132,10 @@ function DependentsContent() {
                 </h1>
                 <p className={`${limitReached ? "text-red-600 font-bold" : "text-gray-600"}`}>
                   {isPrivileged 
-                    ? `System-wide Management: ${dependents.length} records` 
+                    ? `System-wide Management: ${totalOwnedCount} records` 
                     : limitReached 
                       ? "Maximum limit of 4 dependents reached" 
-                      : `You have registered ${dependents.length} of 4 dependents`}
+                      : `You have registered ${totalOwnedCount} of 4 dependents`}
                 </p>
               </div>
 
@@ -151,8 +155,10 @@ function DependentsContent() {
               )}
             </div>
 
-            {/* Pass the setSearchTerm function to the SearchFilterBar */}
-            <SearchFilterBar onSearch={setSearchTerm} showFilters={false} />
+            {/* Only show search if form is NOT showing */}
+            {!showForm && (
+              <SearchFilterBar onSearch={setSearchTerm} showFilters={false} />
+            )}
 
             {showForm && (
               <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">

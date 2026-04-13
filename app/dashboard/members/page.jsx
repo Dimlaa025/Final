@@ -11,7 +11,7 @@ import {
   getClaims,
   logoutUser,
 } from "@/lib/storage"
-import { Plus, Trash2, Edit2 } from "lucide-react"
+import { Trash2, Edit2 } from "lucide-react" // Removed Plus icon import
 import AuthGuard from "@/components/auth-guard"
 import Navbar from "@/components/navbar"
 import Sidebar from "@/components/sidebar"
@@ -156,16 +156,7 @@ function MembersContent() {
                 <p className="text-gray-600 mt-2">Manage {members.length} registered members</p>
               </div>
 
-              <button
-                onClick={() => {
-                  setEditingMember(null)
-                  setShowForm(true)
-                }}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
-              >
-                <Plus className="w-5 h-5" />
-                Add Member
-              </button>
+              {/* Add Member Button has been removed from here */}
             </div>
 
             <SearchFilterBar

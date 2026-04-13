@@ -27,13 +27,15 @@ function ClaimDetailContent() {
 
   useEffect(() => {
     const currentUser = getCurrentUser()
+
     if (!currentUser) {
       router.push("/login")
     } else {
       setUser(currentUser)
+
       const claimData = getClaimById(params.id)
+
       if (claimData) {
-        // Check if user can view this claim
         const canViewAll = canManageClaims(currentUser) || canViewAllClaims(currentUser)
         const canViewOwn = canViewOwnClaims(currentUser) && claimData.memberId === currentUser.id
 
@@ -41,14 +43,14 @@ function ClaimDetailContent() {
           router.push("/unauthorized")
           return
         }
+
         setClaim(claimData)
       }
+
       setMembers(getMembers())
       setLoading(false)
     }
   }, [params.id, router, documentsUpdated])
-
-
 
   const handleSubmitClaim = () => {
     if (claim.status === "draft") {
@@ -110,6 +112,7 @@ function ClaimDetailContent() {
               Last Updated: {new Date(claim.updatedAt || claim.createdAt).toLocaleDateString()}
             </p>
           </div>
+
           <span
             className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(claim.status)}`}
           >
@@ -120,33 +123,48 @@ function ClaimDetailContent() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Claim Information</h2>
+
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-600">Member ID</p>
                 <p className="text-gray-900 font-mono font-medium">{claim.memberId}</p>
               </div>
+
               <div>
                 <p className="text-sm text-gray-600">Member</p>
                 <p className="text-gray-900 font-medium">{getMemberName(claim.memberId)}</p>
               </div>
+
               <div>
                 <p className="text-sm text-gray-600">Claim Type</p>
-                <p className="text-gray-900 font-medium">{claim.claimType}</p>
+                <p className="text-gray-900 font-medium">{claim.claimType || "-"}</p>
               </div>
+
+              <div>
+                <p className="text-sm text-gray-600">Procedure</p>
+                <p className="text-gray-900 font-medium">{claim.procedure || "-"}</p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-600">Diagnosis</p>
+                <p className="text-gray-900 font-medium">{claim.diagnosis || "-"}</p>
+              </div>
+
               <div>
                 <p className="text-sm text-gray-600">Amount</p>
                 <p className="text-gray-900 font-medium text-lg">₱{claim.amount}</p>
               </div>
+
               <div>
                 <p className="text-sm text-gray-600">Service Date</p>
-                <p className="text-gray-900 font-medium">{claim.serviceDate}</p>
+                <p className="text-gray-900 font-medium">{claim.serviceDate || "-"}</p>
               </div>
             </div>
           </div>
 
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Description</h2>
-            <p className="text-gray-700 leading-relaxed">{claim.description}</p>
+            <p className="text-gray-700 leading-relaxed">{claim.description || "-"}</p>
           </div>
         </div>
 
@@ -176,6 +194,7 @@ function ClaimDetailContent() {
             >
               Submit for Approval
             </button>
+
             <Link
               href="/dashboard/claims"
               className="bg-gray-300 hover:bg-gray-400 text-gray-900 font-medium px-6 py-2 rounded-lg transition"
@@ -194,8 +213,6 @@ function ClaimDetailContent() {
           onDocumentsChange={() => setDocumentsUpdated(!documentsUpdated)}
         />
       )}
-
-
     </div>
   )
 }
